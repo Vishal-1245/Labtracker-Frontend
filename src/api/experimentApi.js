@@ -13,6 +13,13 @@ export const getExperimentById = async (id) => {
   return response.data;
 };
 
+export const submitExperimentResults = async (id, submissionData) => {
+  const response = await api.post(`/experiments/${id}/submissions`, {
+    submissionData: JSON.stringify(submissionData),
+  });
+  return response.data;
+};
+
 // Create a new curriculum experiment
 export const createExperiment = async (expData) => {
   const response = await api.post('/experiments', expData);

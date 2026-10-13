@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
+import useAutoRefresh from '../../hooks/useAutoRefresh';
 import { getLabs } from '../../api/labApi';
 import {
   getEquipment,
@@ -60,8 +61,8 @@ const EquipmentPage = () => {
   const [maintenanceLogs, setMaintenanceLogs] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
 
-  const fetchLabsAndEquipment = async () => {
-    setLoading(true);
+  const fetchLabsAndEquipment = async (showLoading = false) => {
+    if (showLoading) setLoading(true);
     setError(null);
     try {
       const [labsData, eqData] = await Promise.all([
@@ -77,9 +78,7 @@ const EquipmentPage = () => {
     }
   };
 
-  useEffect(() => {
-    fetchLabsAndEquipment();
-  }, []);
+  useAutoRefresh(fetchLabsAndEquipment);
 
   // Filter equipment
   const filteredEquipment = equipmentList.filter((eq) => {

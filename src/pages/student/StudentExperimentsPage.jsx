@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import useAutoRefresh from '../../hooks/useAutoRefresh';
 import { getLabs } from '../../api/labApi';
 import { getExperiments } from '../../api/experimentApi';
 import Loader from '../../components/common/Loader';
@@ -18,45 +19,39 @@ const StudentExperimentsPage = () => {
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Initial load of labs
-  useEffect(() => {
-    const fetchLabs = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const labsData = await getLabs();
-        setLabs(labsData);
-        if (!selectedLabId && labsData.length > 0) {
-          setSelectedLabId(labsData[0].id.toString());
-        }
-      } catch (err) {
-        setError(err);
-      } finally {
-        setLoading(false);
+  const fetchLabs = async (showLoading = false) => {
+    if (showLoading) setLoading(true);
+    setError(null);
+    try {
+      const labsData = await getLabs();
+      setLabs(labsData);
+      if (!selectedLabId && labsData.length > 0) {
+        setSelectedLabId(labsData[0].id.toString());
       }
-    };
-    fetchLabs();
-  }, []);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Fetch experiments when selected lab changes
-  useEffect(() => {
+  const fetchExp = async (showLoading = false) => {
     if (!selectedLabId) return;
+    if (showLoading) setLoading(true);
+    setError(null);
+    try {
+      const data = await getExperiments(selectedLabId);
+      setExperiments(data);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const fetchExp = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await getExperiments(selectedLabId);
-        setExperiments(data);
-      } catch (err) {
-        setError(err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  useAutoRefresh(fetchLabs);
 
-    fetchExp();
-  }, [selectedLabId]);
+  useAutoRefresh(fetchExp, 15000, selectedLabId);
 
   const filteredExperiments = experiments.filter((e) =>
     e.code.toLowerCase().includes(searchQuery.toLowerCase()) ||

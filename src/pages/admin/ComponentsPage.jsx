@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
+import useAutoRefresh from '../../hooks/useAutoRefresh';
+import { useAuth } from '../../context/AuthContext';
 import { getLabs } from '../../api/labApi';
 import {
   getComponents,
@@ -10,10 +12,10 @@ import Loader from '../../components/common/Loader';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import FormInput from '../../components/common/FormInput';
 import ComponentImage from '../../components/common/ComponentImage';
-import BroadcastBanner from '../../components/common/BroadcastBanner';
 
 // Admin page managing component stock, categories, inventory health, and restocking
 const ComponentsPage = () => {
+  const { role, assignedLabId } = useAuth();
   const [componentsList, setComponentsList] = useState([]);
   const [labs, setLabs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,7 +26,7 @@ const ComponentsPage = () => {
   const [viewMode, setViewMode] = useState('grid');
 
   // Filters
-  const [selectedLab, setSelectedLab] = useState('ALL');
+  const [selectedLab, setSelectedLab] = useState(assignedLabId || 'ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Add / Edit Modal
@@ -46,13 +48,15 @@ const ComponentsPage = () => {
   const [restockError, setRestockError] = useState(null);
   const [isRestocking, setIsRestocking] = useState(false);
 
-  const fetchLabsAndComponents = async () => {
-    setLoading(true);
+  const fetchLabsAndComponents = async (showLoading = false) => {
+    if (showLoading) setLoading(true);
     setError(null);
     try {
       const [labsData, compsData] = await Promise.all([
         getLabs(),
-        getComponents(),
+        role === 'LAB_INCHARGE'
+          ? assignedLabId ? getComponents(assignedLabId) : Promise.resolve([])
+          : getComponents(),
       ]);
       setLabs(labsData);
       setComponentsList(compsData);
@@ -63,13 +67,13 @@ const ComponentsPage = () => {
     }
   };
 
-  useEffect(() => {
-    fetchLabsAndComponents();
-  }, []);
+  useAutoRefresh(fetchLabsAndComponents);
 
   // Filter components
   const filteredComponents = componentsList.filter((c) => {
-    const matchesLab = selectedLab === 'ALL' || c.labId?.toString() === selectedLab;
+    const matchesLab = role === 'LAB_INCHARGE'
+      ? c.labId?.toString() === assignedLabId
+      : selectedLab === 'ALL' || c.labId?.toString() === selectedLab;
     const matchesSearch =
       c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.category.toLowerCase().includes(searchQuery.toLowerCase());
@@ -217,20 +221,28 @@ const ComponentsPage = () => {
             />
           </div>
 
-          <div style={{ width: '240px' }}>
-            <select
-              value={selectedLab}
-              onChange={(e) => setSelectedLab(e.target.value)}
-              className="form-control"
-            >
-              <option value="ALL">All Laboratories</option>
-              {labs.map((lab) => (
-                <option key={lab.id} value={lab.id}>
-                  {lab.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {role === 'LAB_INCHARGE' ? (
+            <div style={{ width: '240px' }}>
+              <span className="form-label">Assigned Laboratory</span>
+              <div className="form-control" aria-readonly="true">
+                {labs.find((lab) => lab.id.toString() === assignedLabId)?.name || 'Assigned lab'}
+              </div>
+            </div>
+          ) : (
+            <div style={{ width: '240px' }}>
+              <label className="form-label">Laboratory</label>
+              <select
+                value={selectedLab}
+                onChange={(e) => setSelectedLab(e.target.value)}
+                className="form-control"
+              >
+                <option value="ALL">All Laboratories</option>
+                {labs.map((lab) => (
+                  <option key={lab.id} value={lab.id}>{lab.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
             Total <strong>{filteredComponents.length}</strong> component items
@@ -267,7 +279,9 @@ const ComponentsPage = () => {
           <div className="empty-icon">📦</div>
           <div className="empty-title">No Components Found</div>
           <p className="empty-text">
-            No components match the selected laboratory or search terms.
+            {role === 'LAB_INCHARGE' && !assignedLabId
+              ? 'No laboratory is assigned to this account. Ask an administrator to assign one.'
+              : 'No components match the selected laboratory or search terms.'}
           </p>
         </div>
       ) : viewMode === 'grid' ? (

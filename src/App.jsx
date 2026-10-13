@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ConfigProvider } from './context/ConfigContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -31,6 +30,7 @@ import ExperimentGuidePage from './pages/student/ExperimentGuidePage';
 
 // Common Pages
 import NotFoundPage from './pages/common/NotFoundPage';
+import LabAssistantDashboard from './pages/incharge/LabAssistantDashboard';
 
 // Root redirect component routing user directly to their respective home dashboard
 const RootRedirect = () => {
@@ -42,6 +42,7 @@ const RootRedirect = () => {
 
   if (role === 'ADMIN') return <Navigate to="/admin" replace />;
   if (role === 'LAB_INCHARGE') return <Navigate to="/incharge" replace />;
+  if (role === 'LAB_ASSISTANT') return <Navigate to="/assistant" replace />;
   if (role === 'STUDENT') return <Navigate to="/student" replace />;
 
   return <Navigate to="/login" replace />;
@@ -126,6 +127,16 @@ function App() {
                   element={
                     <ProtectedRoute allowedRoles={['ADMIN', 'LAB_INCHARGE']}>
                       <ReportsPage />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Lab Incharge Routes */}
+                <Route
+                  path="/assistant"
+                  element={
+                    <ProtectedRoute allowedRoles={['LAB_ASSISTANT']}>
+                      <LabAssistantDashboard />
                     </ProtectedRoute>
                   }
                 />

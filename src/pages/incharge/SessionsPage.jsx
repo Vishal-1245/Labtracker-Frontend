@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
+import useAutoRefresh from '../../hooks/useAutoRefresh';
 import { getLabs } from '../../api/labApi';
 import { getExperiments } from '../../api/experimentApi';
 import { getUsers } from '../../api/userApi';
@@ -61,7 +62,6 @@ const SessionsPage = () => {
   const [isCreatingTeam, setIsCreatingTeam] = useState(false);
 
   const fetchInitialData = async () => {
-    setLoading(true);
     setError(null);
     try {
       const [sessData, labsData, usersData] = await Promise.all([
@@ -74,12 +74,18 @@ const SessionsPage = () => {
       setStudents(usersData.filter((u) => u.role === 'STUDENT'));
 
       if (labsData.length > 0) {
-        setSessionFormData((prev) => ({ ...prev, labId: labsData[0].id.toString() }));
-        const exps = await getExperiments(labsData[0].id);
+        const labId = labsData.some((lab) => lab.id.toString() === sessionFormData.labId)
+          ? sessionFormData.labId
+          : labsData[0].id.toString();
+        const exps = await getExperiments(labId);
         setExperiments(exps);
-        if (exps.length > 0) {
-          setSessionFormData((prev) => ({ ...prev, experimentId: exps[0].id.toString() }));
-        }
+        setSessionFormData((prev) => ({
+          ...prev,
+          labId,
+          experimentId: exps.some((experiment) => experiment.id.toString() === prev.experimentId)
+            ? prev.experimentId
+            : exps[0]?.id.toString() || '',
+        }));
       }
     } catch (err) {
       setError(err);
@@ -88,9 +94,7 @@ const SessionsPage = () => {
     }
   };
 
-  useEffect(() => {
-    fetchInitialData();
-  }, []);
+  useAutoRefresh(fetchInitialData);
 
   // When selected lab in create modal changes, reload its experiments
   const handleLabChangeInModal = async (labId) => {

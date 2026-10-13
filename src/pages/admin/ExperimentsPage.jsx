@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import useAutoRefresh from '../../hooks/useAutoRefresh';
 import { getLabs } from '../../api/labApi';
 import { getComponents } from '../../api/componentApi';
 import {
@@ -30,7 +31,6 @@ const ExperimentsPage = () => {
 
   // View Details Modal
   const [detailedExp, setDetailedExp] = useState(null);
-  const [loadingDetails, setLoadingDetails] = useState(false);
 
   // Create / Edit Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -75,9 +75,9 @@ const ExperimentsPage = () => {
   }, []);
 
   // Fetch experiments and components whenever selected lab changes
-  const fetchExperimentsAndComponents = async (labId) => {
+  const fetchExperimentsAndComponents = async (labId, showLoading = false) => {
     if (!labId) return;
-    setLoading(true);
+    if (showLoading) setLoading(true);
     setError(null);
     try {
       const [expList, compList] = await Promise.all([
@@ -93,22 +93,15 @@ const ExperimentsPage = () => {
     }
   };
 
-  useEffect(() => {
-    if (selectedLabId) {
-      fetchExperimentsAndComponents(selectedLabId);
-    }
-  }, [selectedLabId]);
+  useAutoRefresh(() => fetchExperimentsAndComponents(selectedLabId), 15000, selectedLabId);
 
   // View full experiment details
   const handleViewDetails = async (expId) => {
-    setLoadingDetails(true);
     try {
       const fullExp = await getExperimentById(expId);
       setDetailedExp(fullExp);
     } catch (err) {
       setError(err);
-    } finally {
-      setLoadingDetails(false);
     }
   };
 
@@ -541,8 +534,8 @@ const ExperimentsPage = () => {
                     <tbody>
                       {detailedExp.components.map((comp) => (
                         <tr key={comp.id}>
-                          <td><strong>{comp.component?.name || `Component #${comp.componentId}`}</strong></td>
-                          <td>{comp.component?.category || '-'}</td>
+                          <td><strong>{comp.componentName || `Component #${comp.componentId}`}</strong></td>
+                          <td>{comp.componentCategory || '-'}</td>
                           <td>{comp.quantityPerTeam} units</td>
                         </tr>
                       ))}

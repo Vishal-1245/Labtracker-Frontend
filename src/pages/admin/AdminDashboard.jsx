@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import useAutoRefresh from '../../hooks/useAutoRefresh';
 import { useAuth } from '../../context/AuthContext';
 import { useConfig } from '../../context/ConfigContext';
 import { getUsers } from '../../api/userApi';
@@ -21,6 +22,7 @@ const AdminDashboard = () => {
     totalUsers: 0,
     studentCount: 0,
     inchargeCount: 0,
+    assistantCount: 0,
     totalLabs: 0,
     totalEquipment: 0,
     maintenanceEquipment: 0,
@@ -30,45 +32,52 @@ const AdminDashboard = () => {
   const [recentMaintenance, setRecentMaintenance] = useState([]);
   const [lowStockList, setLowStockList] = useState([]);
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const [users, labs, equipment, components] = await Promise.all([
-          getUsers(),
-          getLabs(),
-          getEquipment(),
-          getComponents(),
-        ]);
+  const fetchDashboardData = async (showLoading = false) => {
+    if (showLoading) setLoading(true);
+    setError(null);
+    try {
+      const results = await Promise.allSettled([
+        getUsers(),
+        getLabs(),
+        getEquipment(),
+        getComponents(),
+      ]);
+      const [usersResult, labsResult, equipmentResult, componentsResult] = results;
+      const users = usersResult.status === 'fulfilled' ? usersResult.value : [];
+      const labs = labsResult.status === 'fulfilled' ? labsResult.value : [];
+      const equipment = equipmentResult.status === 'fulfilled' ? equipmentResult.value : [];
+      const components = componentsResult.status === 'fulfilled' ? componentsResult.value : [];
+      const failedResult = results.find((result) => result.status === 'rejected');
+      if (failedResult) setError(failedResult.reason);
 
-        const students = users.filter((u) => u.role === 'STUDENT').length;
-        const incharges = users.filter((u) => u.role === 'LAB_INCHARGE').length;
-        const maintEq = equipment.filter((e) => e.status === 'UNDER_MAINTENANCE');
-        const lowStock = components.filter((c) => c.availableQuantity < 10);
+      const students = users.filter((u) => u.role === 'STUDENT').length;
+      const incharges = users.filter((u) => u.role === 'LAB_INCHARGE').length;
+      const assistants = users.filter((u) => u.role === 'LAB_ASSISTANT').length;
+      const maintEq = equipment.filter((e) => e.status === 'UNDER_MAINTENANCE');
+      const lowStock = components.filter((c) => c.availableQuantity < 10);
 
-        setStats({
-          totalUsers: users.length,
-          studentCount: students,
-          inchargeCount: incharges,
-          totalLabs: labs.length,
-          totalEquipment: equipment.length,
-          maintenanceEquipment: maintEq.length,
-          totalComponents: components.length,
-          lowStockComponents: lowStock.length,
-        });
+      setStats({
+        totalUsers: users.length,
+        studentCount: students,
+        inchargeCount: incharges,
+        assistantCount: assistants,
+        totalLabs: labs.length,
+        totalEquipment: equipment.length,
+        maintenanceEquipment: maintEq.length,
+        totalComponents: components.length,
+        lowStockComponents: lowStock.length,
+      });
 
-        setRecentMaintenance(maintEq.slice(0, 5));
-        setLowStockList(lowStock.slice(0, 5));
-      } catch (err) {
-        setError(err);
-      } finally {
-        setLoading(false);
-      }
-    };
+      setRecentMaintenance(maintEq.slice(0, 5));
+      setLowStockList(lowStock.slice(0, 5));
+    } catch (err) {
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchDashboardData();
-  }, []);
+  useAutoRefresh(fetchDashboardData);
 
   if (loading) {
     return <Loader message="Loading administrative dashboard metrics..." />;
@@ -102,7 +111,7 @@ const AdminDashboard = () => {
           <div className="stat-value">{stats.totalUsers}</div>
           <div className="stat-label">Total Users</div>
           <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
-            {stats.studentCount} Students · {stats.inchargeCount} Lab In-charges
+            {stats.studentCount} Students · {stats.inchargeCount} Lab In-charges · {stats.assistantCount} Lab Assistants
           </p>
         </div>
 

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -10,6 +9,7 @@ const NotFoundPage = () => {
     if (!isAuthenticated) return '/login';
     if (role === 'ADMIN') return '/admin';
     if (role === 'LAB_INCHARGE') return '/incharge';
+    if (role === 'LAB_ASSISTANT') return '/assistant';
     return '/student';
   };
 

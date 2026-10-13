@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
+import useAutoRefresh from '../../hooks/useAutoRefresh';
 import { getLabs, createLab, updateLab, deleteLab } from '../../api/labApi';
 import Loader from '../../components/common/Loader';
 import ErrorMessage from '../../components/common/ErrorMessage';
@@ -30,8 +31,8 @@ const LabsPage = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   // Fetch labs from backend
-  const fetchLabs = async () => {
-    setLoading(true);
+  const fetchLabs = async (showLoading = false) => {
+    if (showLoading) setLoading(true);
     setError(null);
     try {
       const data = await getLabs();
@@ -43,9 +44,7 @@ const LabsPage = () => {
     }
   };
 
-  useEffect(() => {
-    fetchLabs();
-  }, []);
+  useAutoRefresh(fetchLabs);
 
   // Filter labs by name or room
   const filteredLabs = labs.filter((l) =>

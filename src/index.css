@@ -6,11 +6,11 @@
 
 :root {
   /* Institutional Color Palette */
-  --primary-color: #1e3a8a;      /* Deep Navy Blue */
-  --primary-hover: #1e40af;
-  --secondary-color: #0f172a;    /* Dark Slate */
-  --accent-color: #2563eb;       /* Royal Blue */
-  --accent-light: #eff6ff;       /* Soft Blue Tint */
+  --primary-color: #4f7167;      /* Muted institutional sage */
+  --primary-hover: #3e5d53;
+  --secondary-color: #303d36;    /* Deep botanical charcoal */
+  --accent-color: #a85d43;       /* Restrained terracotta */
+  --accent-light: #f7eee8;       /* Warm pastel tint */
 
   /* Semantic Feedback Colors */
   --success-color: #15803d;      /* Emerald Green */
@@ -19,16 +19,16 @@
   --warning-bg: #fffbeb;
   --danger-color: #b91c1c;       /* Crimson Red */
   --danger-bg: #fef2f2;
-  --info-color: #0369a1;         /* Sky Blue */
-  --info-bg: #f0f9ff;
+  --info-color: #4f7167;         /* Sage */
+  --info-bg: #edf3ee;
 
   /* Neutral Surface & Typography Colors */
-  --bg-main: #f8fafc;            /* Light Gray Background */
-  --bg-card: #ffffff;
-  --text-primary: #1e293b;       /* Charcoal Text */
-  --text-secondary: #64748b;     /* Muted Slate Text */
-  --border-color: #e2e8f0;
-  --border-focus: #3b82f6;
+  --bg-main: #f3f5ef;            /* Soft sage-white canvas */
+  --bg-card: #fffefa;
+  --text-primary: #303b34;       /* Warm charcoal */
+  --text-secondary: #69776e;     /* Muted sage-gray */
+  --border-color: #dfe5dc;
+  --border-focus: #83a291;
 
   /* Elevation Shadows */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -124,7 +124,7 @@ html, body {
 }
 
 .catalog-card-img-box {
-  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  background: linear-gradient(180deg, #f8f8f2 0%, #edf1e9 100%);
   padding: 24px 16px 16px 16px;
   display: flex;
   justify-content: center;
@@ -172,6 +172,12 @@ html, body {
   justify-content: center;
   padding-top: 12px;
   border-top: 1px solid var(--border-color);
+}
+
+.component-symbol {
+  display: block;
+  color: var(--primary-color);
+  margin: 0 auto;
 }
 
 /* View switcher pill */
@@ -291,8 +297,8 @@ html, body {
    Navigation Bar (Institutional Header)
    ========================================================================== */
 .navbar {
-  background-color: var(--primary-color);
-  color: #ffffff;
+  background-color: #e6ede6;
+  color: var(--text-primary);
   padding: 10px 24px;
   box-shadow: var(--shadow-md);
   position: sticky;
@@ -315,7 +321,7 @@ html, body {
   align-items: center;
   gap: 12px;
   text-decoration: none;
-  color: #ffffff;
+  color: var(--secondary-color);
 }
 
 .brand-icon {
@@ -335,7 +341,7 @@ html, body {
 
 .brand-dept {
   font-size: 12px;
-  color: #93c5fd;
+  color: #657b70;
   font-weight: 500;
 }
 
@@ -350,7 +356,7 @@ html, body {
 }
 
 .nav-link {
-  color: #e0e7ff;
+  color: #43574c;
   text-decoration: none;
   padding: 6px 12px;
   border-radius: var(--radius-md);
@@ -360,8 +366,8 @@ html, body {
 }
 
 .nav-link:hover {
-  background-color: rgba(255, 255, 255, 0.15);
-  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.65);
+  color: var(--secondary-color);
 }
 
 .nav-link.active {
@@ -389,11 +395,133 @@ html, body {
 
 .user-role-tag {
   font-size: 11px;
-  background-color: rgba(255, 255, 255, 0.2);
+  background-color: #d6e2d8;
   padding: 1px 6px;
   border-radius: var(--radius-sm);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.notification-control {
+  position: relative;
+}
+
+.notification-button {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: #fffefa;
+  color: var(--secondary-color);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.notification-count {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--danger-color);
+  color: white;
+  font-size: 11px;
+  line-height: 18px;
+}
+
+.notification-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(360px, calc(100vw - 24px));
+  max-height: 420px;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 120;
+}
+
+.notification-menu-header {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-color);
+  font-weight: 700;
+}
+
+.notification-empty {
+  padding: 12px 14px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.notification-item {
+  display: grid;
+  width: 100%;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--border-color);
+  background: transparent;
+  text-align: left;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.notification-item.unread {
+  background: var(--info-bg);
+}
+
+.notification-item span,
+.notification-item time {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.notification-item time {
+  color: var(--text-secondary);
+}
+
+.password-input-wrap {
+  position: relative;
+}
+
+.form-control.has-password-toggle {
+  padding-right: 44px;
+}
+
+.password-visibility-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.password-visibility-toggle:hover {
+  background: var(--bg-main);
+  color: var(--text-primary);
+}
+
+.password-visibility-toggle svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* ==========================================================================
@@ -604,7 +732,7 @@ html, body {
 .form-select:focus,
 .form-textarea:focus {
   border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 0 0 3px rgba(79, 113, 103, 0.16);
 }
 
 .form-control.is-invalid,
@@ -908,7 +1036,7 @@ html, body {
   align-items: center;
   justify-content: center;
   padding: 24px 16px;
-  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+  background: linear-gradient(135deg, #edf2e9 0%, #f8eee8 100%);
 }
 
 .auth-card {
@@ -943,7 +1071,7 @@ html, body {
 .auth-header p {
   margin: 0;
   font-size: 13px;
-  color: #bfdbfe;
+  color: #e4eee6;
 }
 
 .auth-body {

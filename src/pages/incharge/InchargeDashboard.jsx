@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import useAutoRefresh from '../../hooks/useAutoRefresh';
 import { useAuth } from '../../context/AuthContext';
 import { useConfig } from '../../context/ConfigContext';
 import { getSessions } from '../../api/sessionApi';
@@ -11,7 +12,7 @@ import StatusBadge from '../../components/common/StatusBadge';
 
 // Lab In-charge Dashboard: session overview, bench reservations, and maintenance tickets
 const InchargeDashboard = () => {
-  const { fullName } = useAuth();
+  const { fullName, assignedLabId } = useAuth();
   const { collegeName, departmentName } = useConfig();
 
   const [loading, setLoading] = useState(true);
@@ -20,29 +21,36 @@ const InchargeDashboard = () => {
   const [sessions, setSessions] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [maintenanceItems, setMaintenanceItems] = useState([]);
+  const [maintenanceEquipment, setMaintenanceEquipment] = useState([]);
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const [sessData, bookData, maintLogs] = await Promise.all([
-          getSessions(),
-          getAllBookings(),
-          getMaintenanceLogs({ resolved: false }),
-        ]);
-        setSessions(sessData);
-        setBookings(bookData);
-        setMaintenanceItems(maintLogs);
-      } catch (err) {
-        setError(err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchDashboardData = async (showLoading = false) => {
+    if (showLoading) setLoading(true);
+    setError(null);
+    try {
+      const results = await Promise.allSettled([
+        getSessions(assignedLabId ? { labId: assignedLabId } : {}),
+        getAllBookings(assignedLabId ? { labId: assignedLabId } : {}),
+        getMaintenanceLogs({ resolved: false }),
+        getEquipment({ ...(assignedLabId ? { labId: assignedLabId } : {}), status: 'UNDER_MAINTENANCE' }),
+      ]);
+      const [sessionsResult, bookingsResult, logsResult, equipmentResult] = results;
+      setSessions(sessionsResult.status === 'fulfilled' ? sessionsResult.value : []);
+      setBookings(bookingsResult.status === 'fulfilled' ? bookingsResult.value : []);
+      const equipmentUnderMaintenance = equipmentResult.status === 'fulfilled' ? equipmentResult.value : [];
+      const maintainedEquipmentIds = new Set(equipmentUnderMaintenance.map((equipment) => equipment.id));
+      const maintenanceLogs = logsResult.status === 'fulfilled' ? logsResult.value : [];
+      setMaintenanceItems(maintenanceLogs.filter((item) => maintainedEquipmentIds.has(item.equipmentId)));
+      setMaintenanceEquipment(equipmentUnderMaintenance);
+      const failedResult = results.find((result) => result.status === 'rejected');
+      if (failedResult) setError(failedResult.reason);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchDashboardData();
-  }, []);
+  useAutoRefresh(fetchDashboardData);
 
   if (loading) {
     return <Loader message="Loading faculty laboratory dashboard..." />;
@@ -88,6 +96,16 @@ const InchargeDashboard = () => {
           <div className="stat-label">Student Bench Bookings</div>
           <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
             Upcoming student slot reservations
+          </p>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-value" style={{ color: maintenanceEquipment.length ? 'var(--warning-color)' : 'var(--success-color)' }}>
+            {maintenanceEquipment.length}
+          </div>
+          <div className="stat-label">Equipment Under Maintenance</div>
+          <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
+            Assets unavailable until maintenance is resolved
           </p>
         </div>
 
@@ -188,6 +206,34 @@ const InchargeDashboard = () => {
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginTop: '20px' }}>
+        <div className="card-header">
+          <h2 className="card-title">Equipment Requiring Attention</h2>
+          <Link to="/incharge/equipment" className="btn btn-outline btn-sm">View Equipment</Link>
+        </div>
+        <div className="card-body">
+          {maintenanceEquipment.length === 0 ? (
+            <div className="empty-state" style={{ padding: '20px' }}><p>No equipment is marked under maintenance.</p></div>
+          ) : (
+            <div className="table-responsive">
+              <table className="data-table">
+                <thead><tr><th>Asset</th><th>Equipment</th><th>Lab</th><th>Status</th></tr></thead>
+                <tbody>
+                  {maintenanceEquipment.map((equipment) => (
+                    <tr key={equipment.id}>
+                      <td><code>{equipment.assetTag}</code></td>
+                      <td>{equipment.name}</td>
+                      <td>{equipment.labName}</td>
+                      <td><StatusBadge status={equipment.status} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </div>

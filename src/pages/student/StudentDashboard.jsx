@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import useAutoRefresh from '../../hooks/useAutoRefresh';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useConfig } from '../../context/ConfigContext';
@@ -34,16 +35,23 @@ const StudentDashboard = () => {
   // Cancel booking confirmation
   const [cancelTarget, setCancelTarget] = useState(null);
 
-  const fetchStudentData = async () => {
-    setLoading(true);
+  const fetchStudentData = async (showLoading = false) => {
+    if (showLoading) setLoading(true);
     setError(null);
     try {
-      const [labsData, expsData, bookingsData, sessionsData] = await Promise.all([
+      const results = await Promise.allSettled([
         getLabs(),
         getExperiments(),
         getMyBookings(),
         getSessions(),
       ]);
+      const [labsResult, experimentsResult, bookingsResult, sessionsResult] = results;
+      const labsData = labsResult.status === 'fulfilled' ? labsResult.value : [];
+      const expsData = experimentsResult.status === 'fulfilled' ? experimentsResult.value : [];
+      const bookingsData = bookingsResult.status === 'fulfilled' ? bookingsResult.value : [];
+      const sessionsData = sessionsResult.status === 'fulfilled' ? sessionsResult.value : [];
+      const failedResult = results.find((result) => result.status === 'rejected');
+      if (failedResult) setError(failedResult.reason);
       setLabs(labsData);
       setExperiments(expsData);
       setBookings(bookingsData);
@@ -59,9 +67,7 @@ const StudentDashboard = () => {
     }
   };
 
-  useEffect(() => {
-    fetchStudentData();
-  }, []);
+  useAutoRefresh(fetchStudentData);
 
   // Whenever quick slot checker lab or date changes, check bookings
   useEffect(() => {

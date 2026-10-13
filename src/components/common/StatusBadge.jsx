@@ -1,5 +1,3 @@
-import React from 'react';
-
 // Reusable status badge with semantic color coding
 const StatusBadge = ({ status }) => {
   if (!status && status !== false) return null;
@@ -34,6 +32,8 @@ const StatusBadge = ({ status }) => {
         return 'badge-danger';
       case 'LAB_INCHARGE':
         return 'badge-info';
+      case 'LAB_ASSISTANT':
+        return 'badge-warning';
       case 'STUDENT':
         return 'badge-success';
 

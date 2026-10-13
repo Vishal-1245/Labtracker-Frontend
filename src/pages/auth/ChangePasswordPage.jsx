@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useConfig } from '../../context/ConfigContext';
@@ -68,6 +68,8 @@ const ChangePasswordPage = () => {
           navigate('/admin');
         } else if (role === 'LAB_INCHARGE') {
           navigate('/incharge');
+        } else if (role === 'LAB_ASSISTANT') {
+          navigate('/assistant');
         } else {
           navigate('/student');
         }
@@ -82,6 +84,7 @@ const ChangePasswordPage = () => {
   const handleCancel = () => {
     if (role === 'ADMIN') navigate('/admin');
     else if (role === 'LAB_INCHARGE') navigate('/incharge');
+    else if (role === 'LAB_ASSISTANT') navigate('/assistant');
     else navigate('/student');
   };
 

@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
+import useAutoRefresh from '../../hooks/useAutoRefresh';
 import { useConfig } from '../../context/ConfigContext';
+import { getLabs } from '../../api/labApi';
 import { getUsers, createUser, updateUser, deactivateUser, importUsersCsv } from '../../api/userApi';
 import Loader from '../../components/common/Loader';
 import ErrorMessage from '../../components/common/ErrorMessage';
@@ -12,6 +14,7 @@ const UsersPage = () => {
   const { rollNoPattern } = useConfig();
 
   const [users, setUsers] = useState([]);
+  const [labs, setLabs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionSuccess, setActionSuccess] = useState('');
@@ -30,6 +33,7 @@ const UsersPage = () => {
     role: 'STUDENT',
     password: '',
     active: true,
+    labId: '',
   });
   const [modalError, setModalError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,8 +49,8 @@ const UsersPage = () => {
   const [deactivateTarget, setDeactivateTarget] = useState(null);
 
   // Fetch all users on mount
-  const fetchUsers = async () => {
-    setLoading(true);
+  const fetchUsers = async (showLoading = false) => {
+    if (showLoading) setLoading(true);
     setError(null);
     try {
       const data = await getUsers();
@@ -58,9 +62,16 @@ const UsersPage = () => {
     }
   };
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  useAutoRefresh(fetchUsers);
+
+  const fetchLabs = async () => {
+    try {
+      setLabs(await getLabs());
+    } catch (err) {
+      setError(err);
+    }
+  };
+  useAutoRefresh(fetchLabs);
 
   // Filter users based on query and role
   const filteredUsers = users.filter((u) => {
@@ -83,6 +94,7 @@ const UsersPage = () => {
       role: 'STUDENT',
       password: '',
       active: true,
+      labId: '',
     });
     setModalError(null);
     setIsUserModalOpen(true);
@@ -98,6 +110,7 @@ const UsersPage = () => {
       role: user.role,
       password: '',
       active: user.active,
+      labId: user.labId?.toString() || '',
     });
     setModalError(null);
     setIsUserModalOpen(true);
@@ -121,13 +134,22 @@ const UsersPage = () => {
       }
     }
 
+    if (['LAB_INCHARGE', 'LAB_ASSISTANT'].includes(userFormData.role) && !userFormData.labId) {
+      setModalError('Select the laboratory assigned to this lab staff account.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
+      const payload = {
+        ...userFormData,
+        labId: ['LAB_INCHARGE', 'LAB_ASSISTANT'].includes(userFormData.role) ? Number(userFormData.labId) : null,
+      };
       if (editingUser) {
-        await updateUser(editingUser.id, userFormData);
+        await updateUser(editingUser.id, payload);
         setActionSuccess(`User '${userFormData.username}' updated successfully.`);
       } else {
-        await createUser(userFormData);
+        await createUser(payload);
         setActionSuccess(`User '${userFormData.username}' registered successfully.`);
       }
       setIsUserModalOpen(false);
@@ -243,6 +265,7 @@ const UsersPage = () => {
               <option value="ALL">All Roles</option>
               <option value="STUDENT">Students</option>
               <option value="LAB_INCHARGE">Lab In-charges</option>
+              <option value="LAB_ASSISTANT">Lab Assistants</option>
               <option value="ADMIN">Admins</option>
             </select>
           </div>
@@ -275,6 +298,7 @@ const UsersPage = () => {
                   <th>Full Name</th>
                   <th>Email</th>
                   <th>Role</th>
+                  <th>Assigned Lab</th>
                   <th>Status</th>
                   <th>Must Change Password</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
@@ -287,6 +311,7 @@ const UsersPage = () => {
                     <td><strong>{user.fullName}</strong></td>
                     <td>{user.email}</td>
                     <td><StatusBadge status={user.role} /></td>
+                    <td>{user.labName || (['LAB_INCHARGE', 'LAB_ASSISTANT'].includes(user.role) ? 'Not assigned' : '-')}</td>
                     <td><StatusBadge status={user.active} /></td>
                     <td>
                       {user.mustChangePassword ? (
@@ -380,9 +405,30 @@ const UsersPage = () => {
                   >
                     <option value="STUDENT">STUDENT</option>
                     <option value="LAB_INCHARGE">LAB_INCHARGE</option>
+                    <option value="LAB_ASSISTANT">LAB_ASSISTANT</option>
                     <option value="ADMIN">ADMIN</option>
                   </select>
                 </div>
+
+                {['LAB_INCHARGE', 'LAB_ASSISTANT'].includes(userFormData.role) && (
+                  <div className="form-group">
+                    <label htmlFor="assigned-lab" className="form-label">
+                      Assigned Laboratory <span className="required">*</span>
+                    </label>
+                    <select
+                      id="assigned-lab"
+                      value={userFormData.labId}
+                      onChange={(e) => setUserFormData({ ...userFormData, labId: e.target.value })}
+                      className="form-control"
+                      required
+                    >
+                      <option value="">Select a laboratory</option>
+                      {labs.map((lab) => (
+                        <option key={lab.id} value={lab.id}>{lab.name} ({lab.roomNo})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <FormInput
                   label={editingUser ? 'New Password (leave empty to keep current)' : 'Password'}

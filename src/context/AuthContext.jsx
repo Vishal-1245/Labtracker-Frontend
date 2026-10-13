@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 import { login as loginService } from '../api/authApi';
 
 // Authentication context providing session state across the React app
@@ -10,6 +10,7 @@ export const AuthProvider = ({ children }) => {
   const [role, setRole] = useState(() => localStorage.getItem('role') || null);
   const [username, setUsername] = useState(() => localStorage.getItem('username') || null);
   const [fullName, setFullName] = useState(() => localStorage.getItem('fullName') || null);
+  const [assignedLabId, setAssignedLabId] = useState(() => localStorage.getItem('assignedLabId') || null);
   const [mustChangePassword, setMustChangePassword] = useState(() => {
     return localStorage.getItem('mustChangePassword') === 'true';
   });
@@ -23,6 +24,11 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('role', data.role);
     localStorage.setItem('username', data.username);
     localStorage.setItem('fullName', data.fullName);
+    if (data.assignedLabId) {
+      localStorage.setItem('assignedLabId', String(data.assignedLabId));
+    } else {
+      localStorage.removeItem('assignedLabId');
+    }
     localStorage.setItem('mustChangePassword', String(data.mustChangePassword));
 
     // Update state
@@ -30,6 +36,7 @@ export const AuthProvider = ({ children }) => {
     setRole(data.role);
     setUsername(data.username);
     setFullName(data.fullName);
+    setAssignedLabId(data.assignedLabId ? String(data.assignedLabId) : null);
     setMustChangePassword(Boolean(data.mustChangePassword));
 
     return data;
@@ -41,12 +48,14 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('role');
     localStorage.removeItem('username');
     localStorage.removeItem('fullName');
+    localStorage.removeItem('assignedLabId');
     localStorage.removeItem('mustChangePassword');
 
     setToken(null);
     setRole(null);
     setUsername(null);
     setFullName(null);
+    setAssignedLabId(null);
     setMustChangePassword(false);
   };
 
@@ -65,6 +74,7 @@ export const AuthProvider = ({ children }) => {
         role,
         username,
         fullName,
+        assignedLabId,
         mustChangePassword,
         isAuthenticated,
         login,
@@ -78,4 +88,5 @@ export const AuthProvider = ({ children }) => {
 };
 
 // Hook for accessing current user authentication state
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);

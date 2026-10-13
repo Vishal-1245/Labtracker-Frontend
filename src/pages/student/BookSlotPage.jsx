@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
+import useAutoRefresh from '../../hooks/useAutoRefresh';
 import { getLabs } from '../../api/labApi';
 import { getExperiments, getExperimentById } from '../../api/experimentApi';
 import { getEquipment } from '../../api/equipmentApi';
@@ -44,100 +45,85 @@ const BookSlotPage = () => {
   // Cancel reservation state
   const [cancelTarget, setCancelTarget] = useState(null);
 
-  // Initial load
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const [labsData, myBookingsData] = await Promise.all([
-          getLabs(),
-          getMyBookings(),
-        ]);
-        setLabs(labsData);
-        setMyBookings(myBookingsData);
-
-        if (labsData.length > 0) {
-          const firstLabId = labsData[0].id.toString();
-          setFormData((prev) => ({ ...prev, labId: firstLabId }));
-        }
-      } catch (err) {
-        setError(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchInitialData();
-  }, []);
+  const fetchInitialData = async () => {
+    setError(null);
+    try {
+      const [labsData, myBookingsData] = await Promise.all([
+        getLabs(),
+        getMyBookings(),
+      ]);
+      setLabs(labsData);
+      setMyBookings(myBookingsData);
+      setFormData((prev) => ({
+        ...prev,
+        labId: labsData.some((lab) => lab.id.toString() === prev.labId)
+          ? prev.labId
+          : labsData[0]?.id.toString() || '',
+      }));
+    } catch (err) {
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  useAutoRefresh(fetchInitialData);
 
   // When lab changes, load its experiments and equipment
-  useEffect(() => {
+  const fetchLabAssets = async () => {
     if (!formData.labId) return;
-
-    const fetchLabAssets = async () => {
-      try {
-        const [expData, eqData] = await Promise.all([
-          getExperiments(formData.labId),
-          getEquipment({ labId: formData.labId }),
-        ]);
-        setExperiments(expData);
-        setEquipmentList(eqData);
-
-        // Reset experiment and equipment selections for the new lab
-        setFormData((prev) => ({
-          ...prev,
-          experimentId: expData.length > 0 ? expData[0].id.toString() : '',
-          equipmentId: '',
-        }));
-      } catch (err) {
-        console.error('Failed to load lab assets:', err);
-      }
-    };
-
-    fetchLabAssets();
-  }, [formData.labId]);
+    try {
+      const [expData, eqData] = await Promise.all([
+        getExperiments(formData.labId),
+        getEquipment({ labId: formData.labId }),
+      ]);
+      setExperiments(expData);
+      setEquipmentList(eqData);
+      setFormData((prev) => ({
+        ...prev,
+        experimentId: expData.some((experiment) => experiment.id.toString() === prev.experimentId)
+          ? prev.experimentId
+          : expData[0]?.id.toString() || '',
+        equipmentId: eqData.some((equipment) => equipment.id.toString() === prev.equipmentId)
+          ? prev.equipmentId
+          : '',
+      }));
+    } catch (err) {
+      console.error('Failed to load lab assets:', err);
+    }
+  };
+  useAutoRefresh(fetchLabAssets, 15000, formData.labId);
 
   // When experiment changes, load its details (aim, required components, stock status)
-  useEffect(() => {
+  const fetchExperimentDetails = async () => {
     if (!formData.experimentId) {
       setSelectedExpDetails(null);
       return;
     }
-
-    const fetchExpDetails = async () => {
-      setLoadingExpDetails(true);
-      try {
-        const exp = await getExperimentById(formData.experimentId);
-        setSelectedExpDetails(exp);
-      } catch (err) {
-        console.error('Failed to load experiment details:', err);
-      } finally {
-        setLoadingExpDetails(false);
-      }
-    };
-
-    fetchExpDetails();
-  }, [formData.experimentId]);
+    try {
+      const exp = await getExperimentById(formData.experimentId);
+      setSelectedExpDetails(exp);
+    } catch (err) {
+      console.error('Failed to load experiment details:', err);
+    } finally {
+      setLoadingExpDetails(false);
+    }
+  };
+  useAutoRefresh(fetchExperimentDetails, 15000, formData.experimentId);
 
   // Check lab bookings on the selected date to compute remaining capacity
-  useEffect(() => {
+  const fetchLabBookings = async () => {
     if (!formData.labId || !formData.bookingDate) return;
-
-    const fetchLabBookings = async () => {
-      try {
-        const bookingsOnDate = await getAllBookings({
-          labId: formData.labId,
-          date: formData.bookingDate,
-        });
-        setLabBookingsOnDate(bookingsOnDate);
-      } catch {
-        // Fallback gracefully
-        setLabBookingsOnDate([]);
-      }
-    };
-
-    fetchLabBookings();
-  }, [formData.labId, formData.bookingDate]);
+    try {
+      const bookingsOnDate = await getAllBookings({
+        labId: formData.labId,
+        date: formData.bookingDate,
+      });
+      setLabBookingsOnDate(bookingsOnDate);
+    } catch {
+      setLabBookingsOnDate([]);
+    }
+  };
+  useAutoRefresh(fetchLabBookings, 15000, `${formData.labId}:${formData.bookingDate}`);
 
   // Compute remaining slot capacity for selected lab and time window
   const selectedLabObj = labs.find((l) => l.id.toString() === formData.labId);

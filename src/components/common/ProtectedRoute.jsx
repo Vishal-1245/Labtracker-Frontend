@@ -1,4 +1,3 @@
-import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -22,6 +21,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     // Redirect unauthorized user to their primary role page
     if (role === 'ADMIN') return <Navigate to="/admin" replace />;
     if (role === 'LAB_INCHARGE') return <Navigate to="/incharge" replace />;
+    if (role === 'LAB_ASSISTANT') return <Navigate to="/assistant" replace />;
     if (role === 'STUDENT') return <Navigate to="/student" replace />;
     return <Navigate to="/login" replace />;
   }

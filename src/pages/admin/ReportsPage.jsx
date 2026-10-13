@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useConfig } from '../../context/ConfigContext';
+import useAutoRefresh from '../../hooks/useAutoRefresh';
 import { getUsers } from '../../api/userApi';
 import { getLabs } from '../../api/labApi';
 import { getEquipment } from '../../api/equipmentApi';
@@ -20,34 +21,35 @@ const ReportsPage = () => {
   const [equipment, setEquipment] = useState([]);
   const [components, setComponents] = useState([]);
 
-  useEffect(() => {
-    const fetchAllData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const [userData, labData, eqData, compData] = await Promise.all([
-          getUsers(),
-          getLabs(),
-          getEquipment(),
-          getComponents(),
-        ]);
-        setUsers(userData);
-        setLabs(labData);
-        setEquipment(eqData);
-        setComponents(compData);
-      } catch (err) {
-        setError(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchAllData();
-  }, []);
+  const fetchAllData = async () => {
+    setError(null);
+    try {
+      const [userData, labData, eqData, compData] = await Promise.all([
+        getUsers(),
+        getLabs(),
+        getEquipment(),
+        getComponents(),
+      ]);
+      setUsers(userData);
+      setLabs(labData);
+      setEquipment(eqData);
+      setComponents(compData);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useAutoRefresh(fetchAllData);
 
   // Compute metrics
   const studentCount = users.filter((u) => u.role === 'STUDENT').length;
   const inchargeCount = users.filter((u) => u.role === 'LAB_INCHARGE').length;
+  const assistantCount = users.filter((u) => u.role === 'LAB_ASSISTANT').length;
   const adminCount = users.filter((u) => u.role === 'ADMIN').length;
+  const loggedInUsers = users.filter((user) => (user.loginCount || 0) > 0);
+  const neverLoggedInUsers = users.length - loggedInUsers.length;
 
   const totalCapacity = labs.reduce((sum, l) => sum + (l.slotCapacity || 0), 0);
 
@@ -151,7 +153,15 @@ const ReportsPage = () => {
           <div className="stat-value">{users.length}</div>
           <div className="stat-label">Registered Users</div>
           <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
-            {studentCount} Students · {inchargeCount} Faculty In-charges · {adminCount} Admins
+            {studentCount} Students · {inchargeCount} In-charges · {assistantCount} Assistants · {adminCount} Admins
+          </p>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-value">{loggedInUsers.length}</div>
+          <div className="stat-label">Users Logged In</div>
+          <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
+            {neverLoggedInUsers} of {users.length} registered accounts have never signed in
           </p>
         </div>
 
@@ -179,6 +189,35 @@ const ReportsPage = () => {
               ? `⚠️ ${lowStockItems.length} types require restocking (< 15 units)`
               : 'All component stocks healthy'}
           </p>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginTop: '20px' }}>
+        <div className="card-header">
+          <h2 className="card-title">Account Login Activity</h2>
+          <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+            {loggedInUsers.length} signed in · {neverLoggedInUsers} never signed in
+          </span>
+        </div>
+        <div className="card-body">
+          <div className="table-responsive">
+            <table className="data-table">
+              <thead>
+                <tr><th>Account</th><th>Name</th><th>Role</th><th>Sign-ins</th><th>Last Sign-in</th></tr>
+              </thead>
+              <tbody>
+                {users.map((user) => (
+                  <tr key={user.id}>
+                    <td><code>{user.username}</code></td>
+                    <td>{user.fullName}</td>
+                    <td><StatusBadge status={user.role} /></td>
+                    <td>{user.loginCount || 0}</td>
+                    <td>{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : 'Never'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 

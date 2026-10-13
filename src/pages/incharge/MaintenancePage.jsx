@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
+import useAutoRefresh from '../../hooks/useAutoRefresh';
 import {
   getEquipment,
   getMaintenanceLogs,
@@ -33,7 +34,6 @@ const MaintenancePage = () => {
   const [resolveTarget, setResolveTarget] = useState(null);
 
   const fetchLogsAndEquipment = async () => {
-    setLoading(true);
     setError(null);
     try {
       const [logsData, eqData] = await Promise.all([
@@ -43,9 +43,11 @@ const MaintenancePage = () => {
       setLogs(logsData);
       setEquipmentList(eqData);
 
-      if (eqData.length > 0) {
-        setSelectedEquipmentId(eqData[0].id.toString());
-      }
+      setSelectedEquipmentId((currentId) =>
+        eqData.some((equipment) => equipment.id.toString() === currentId)
+          ? currentId
+          : eqData[0]?.id.toString() || ''
+      );
     } catch (err) {
       setError(err);
     } finally {
@@ -53,9 +55,7 @@ const MaintenancePage = () => {
     }
   };
 
-  useEffect(() => {
-    fetchLogsAndEquipment();
-  }, []);
+  useAutoRefresh(fetchLogsAndEquipment);
 
   // Filter tickets
   const filteredLogs = logs.filter((l) => {

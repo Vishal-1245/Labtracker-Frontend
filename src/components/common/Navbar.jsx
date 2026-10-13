@@ -1,13 +1,38 @@
-import React from 'react';
+import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useConfig } from '../../context/ConfigContext';
+import useAutoRefresh from '../../hooks/useAutoRefresh';
+import { getMyNotifications, markNotificationRead } from '../../api/notificationApi';
 
 // Institutional navigation bar with college branding, dynamic role menus, and user actions
 const Navbar = () => {
-  const { isAuthenticated, role, fullName, logout } = useAuth();
+  const { isAuthenticated, role, fullName, username, logout } = useAuth();
   const { collegeName, departmentName } = useConfig();
   const navigate = useNavigate();
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+
+  const refreshNotifications = async () => {
+    if (!isAuthenticated) return;
+    try {
+      setNotifications(await getMyNotifications());
+    } catch {
+      setNotifications([]);
+    }
+  };
+  useAutoRefresh(refreshNotifications, 15000, username);
+
+  const handleNotificationClick = async (notification) => {
+    if (!notification.read) {
+      try {
+        const updated = await markNotificationRead(notification.id);
+        setNotifications((current) => current.map((item) => item.id === updated.id ? updated : item));
+      } catch {
+        return;
+      }
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -53,6 +78,10 @@ const Navbar = () => {
                 </>
               )}
 
+              {role === 'LAB_ASSISTANT' && (
+                <li><NavLink to="/assistant" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>Lab Bookings</NavLink></li>
+              )}
+
               {role === 'STUDENT' && (
                 <>
                   <li><NavLink to="/student" end className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>My Dashboard</NavLink></li>
@@ -68,11 +97,46 @@ const Navbar = () => {
         <div className="navbar-user">
           {isAuthenticated ? (
             <>
+              <div className="notification-control">
+                <button
+                  type="button"
+                  className="notification-button"
+                  aria-label={`Notifications, ${notifications.filter((item) => !item.read).length} unread`}
+                  aria-expanded={notificationsOpen}
+                  onClick={() => setNotificationsOpen((open) => !open)}
+                >
+                  <span aria-hidden="true">🔔</span>
+                  {notifications.some((item) => !item.read) && (
+                    <span className="notification-count">
+                      {notifications.filter((item) => !item.read).length}
+                    </span>
+                  )}
+                </button>
+                {notificationsOpen && (
+                  <div className="notification-menu">
+                    <div className="notification-menu-header">Notifications</div>
+                    {notifications.length === 0 ? (
+                      <p className="notification-empty">No notifications yet.</p>
+                    ) : notifications.slice(0, 8).map((notification) => (
+                      <button
+                        key={notification.id}
+                        type="button"
+                        className={`notification-item ${notification.read ? '' : 'unread'}`}
+                        onClick={() => handleNotificationClick(notification)}
+                      >
+                        <strong>{notification.title}</strong>
+                        <span>{notification.message}</span>
+                        <time>{new Date(notification.createdAt).toLocaleString()}</time>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <div className="user-profile">
                 <span className="user-name">{fullName || 'User'}</span>
                 <span className="user-role-tag">{role}</span>
               </div>
-              <NavLink to="/change-password" className="btn btn-outline btn-sm" style={{ color: '#ffffff', borderColor: 'rgba(255,255,255,0.4)' }}>
+              <NavLink to="/change-password" className="btn btn-outline btn-sm">
                 🔑 Password
               </NavLink>
               <button onClick={handleLogout} className="btn btn-secondary btn-sm">

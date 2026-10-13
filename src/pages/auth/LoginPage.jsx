@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useConfig } from '../../context/ConfigContext';
@@ -47,6 +47,8 @@ const LoginPage = () => {
         navigate('/admin');
       } else if (data.role === 'LAB_INCHARGE') {
         navigate('/incharge');
+      } else if (data.role === 'LAB_ASSISTANT') {
+        navigate('/assistant');
       } else {
         navigate('/student');
       }
